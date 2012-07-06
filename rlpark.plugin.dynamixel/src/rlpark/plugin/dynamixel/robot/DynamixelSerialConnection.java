@@ -37,7 +37,7 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
   private final DropScalarGroup sensors;
   private InputStream input;
   private OutputStream output;
-  private final Semaphore semaphore = new Semaphore(1);
+  private final Semaphore semaphore = new Semaphore(1, true);
 
   DynamixelSerialConnection(String serialPortPath, byte[] motorIDs) {
     this.serialPortPath = serialPortPath;
@@ -83,9 +83,8 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
     motorSensorBuffer.clear();
     for (byte motorID : motorIDs) {
       byte[] motorData = requestMotorSensors(motorID);
-      if (motorData == null)
-        return null;
-      motorSensorBuffer.put(motorData);
+      if (motorData != null)
+        motorSensorBuffer.put(motorData);
     }
 
     releaseSemaphore();
@@ -127,6 +126,12 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
   private byte[] requestMotorSensors(byte motorID) {
     sendReadRequest(motorID, DynamixelConstant.DXL_PRESENT_POSITION_L, (byte) 6);
     byte[] buffer = new byte[12];
+    try {
+      Thread.sleep(1);
+    } catch (InterruptedException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
     receiveMessage(buffer);
     return buffer;
   }
@@ -144,6 +149,7 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
         nbAvailable = input.available();
         if (chrono.getCurrentChrono() > 2) {
           byte[] buffer = flushSerialPort();
+          System.out.print("timeout ");
           for (byte b : buffer)
             System.out.print(Integer.toHexString(b) + " ");
           System.out.println("");
@@ -247,5 +253,9 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
     default:
       System.out.println("Event received: unknown");
     }
+  }
+
+  public byte[] motorIDs() {
+    return motorIDs;
   }
 }

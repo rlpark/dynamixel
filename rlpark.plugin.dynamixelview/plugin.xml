@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.views">
+      <view
+            allowMultiple="true"
+            class="rlpark.plugin.dynamixelview.view.ObservationView"
+            id="zephyr.plugin.dynamixelview.view.observation"
+            name="Dynamixel"
+            restorable="true">
+      </view>
+   </extension>
+   <extension
+         point="zephyr.viewprovider">
+      <client
+            class="rlpark.plugin.dynamixelview.view.ObservationView$Provider"
+            name="Dynamixel View"
+            viewid="zephyr.plugin.critterview.view.observation">
+      </client>
+   </extension>
+</plugin>

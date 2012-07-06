@@ -1,0 +1,14 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: rlpark.plugin.dynamixelview
+Bundle-SymbolicName: rlpark.plugin.dynamixelview;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Vendor: Thomas
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Require-Bundle: zephyr.plugin.core;bundle-version="1.0.0",
+ zephyr.plugin.core.api;bundle-version="1.0.0",
+ org.eclipse.ui,
+ org.eclipse.core.runtime,
+ rlpark.plugin.dynamixel;bundle-version="1.0.0",
+ rlpark.plugin.rltoys;bundle-version="1.0.0",
+ rlpark.plugin.robot;bundle-version="1.0.0"
