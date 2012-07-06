@@ -1,5 +1,6 @@
 package rlpark.plugin.dynamixel.robot;
 
+import rlpark.plugin.dynamixel.internal.DropLoad;
 import rlpark.plugin.robot.internal.disco.drops.Drop;
 import rlpark.plugin.robot.internal.disco.drops.DropByteArray;
 import rlpark.plugin.robot.internal.disco.drops.DropData;
@@ -16,7 +17,7 @@ public class DynamixelDescriptor {
       descriptors[position] = new DropByteArray("Unused", 5);
       descriptors[position + 1] = new DropShortUnsigned("Goal" + i);
       descriptors[position + 2] = new DropShortUnsigned("Torque" + i);
-      descriptors[position + 3] = new DropShortUnsigned("Load" + i);
+      descriptors[position + 3] = new DropLoad("Load" + i);
       descriptors[position + 4] = new DropByteArray("Unused", 1);
       position += 5;
     }
