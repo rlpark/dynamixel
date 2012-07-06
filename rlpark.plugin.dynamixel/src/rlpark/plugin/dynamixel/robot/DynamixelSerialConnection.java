@@ -15,6 +15,7 @@ import java.util.TooManyListenersException;
 import java.util.concurrent.Semaphore;
 
 import rlpark.plugin.dynamixel.internal.DynamixelConstant;
+import rlpark.plugin.dynamixel.internal.DynamixelDescriptor;
 import rlpark.plugin.irobot.internal.descriptors.IRobotObservationReceiver;
 import rlpark.plugin.irobot.internal.serial.SerialPortToRobot.SerialPortInfo;
 import rlpark.plugin.irobot.internal.serial.SerialPorts;
