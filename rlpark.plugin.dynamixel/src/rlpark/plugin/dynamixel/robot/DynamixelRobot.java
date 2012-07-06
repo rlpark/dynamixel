@@ -11,15 +11,15 @@ import zephyr.plugin.core.api.monitoring.abstracts.DataMonitor;
 import zephyr.plugin.core.api.monitoring.abstracts.MonitorContainer;
 
 public class DynamixelRobot extends RobotEnvironment implements MonitorContainer {
-  private final DynamixelDirectSerialConnection connection;
+  private final DynamixelSerialConnection connection;
 
   public DynamixelRobot(String serialPortPath, byte[] motorIDs) {
-    this(new DynamixelDirectSerialConnection(serialPortPath, motorIDs), false);
+    this(new DynamixelSerialConnection(serialPortPath, motorIDs), false);
   }
 
   private DynamixelRobot(ObservationReceiver receiver, boolean persistent) {
     super(receiver, persistent);
-    connection = (DynamixelDirectSerialConnection) receiver;
+    connection = (DynamixelSerialConnection) receiver;
   }
 
   @Override

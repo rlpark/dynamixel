@@ -20,8 +20,12 @@ public class DynamixelAction implements Action {
     this.torques = torques;
   }
 
+  /*
+   * 
+   * 0xff 0xff 0xfe 0xb 0x83 0x1e 0x6 0x60 0x43 0x1 0x58 0x2 0x58 0x2 0xf7
+   */
   public byte[] buildMessage() {
-    byte length = (byte) (4 + positions.length * 2 * 3);
+    byte length = (byte) (4 + positions.length * 2 * 3 + positions.length);
 
     byte[] header = new byte[] { (byte) 0xff, (byte) 0xff, DynamixelConstant.DXL_BROADCAST, length,
         DynamixelConstant.DXL_SYNC_WRITE, DynamixelConstant.DXL_GOAL_POSITION_L, 6 };
@@ -31,6 +35,7 @@ public class DynamixelAction implements Action {
 
     LiteByteBuffer motorData = new LiteByteBuffer(length, ByteOrder.LITTLE_ENDIAN);
     for (int i = 0; i < positions.length; i++) {
+      // motorData.putShort((short) positions[i]);
       motorData.putShort((short) positions[i]);
       motorData.putShort((short) speeds[i]);
       motorData.putShort((short) torques[i]);
