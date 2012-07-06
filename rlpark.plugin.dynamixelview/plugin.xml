@@ -6,6 +6,7 @@
       <view
             allowMultiple="true"
             class="rlpark.plugin.dynamixelview.view.ObservationView"
+            icon="icons/view_observation.png"
             id="zephyr.plugin.dynamixelview.view.observation"
             name="Dynamixel"
             restorable="true">
@@ -15,8 +16,9 @@
          point="zephyr.viewprovider">
       <client
             class="rlpark.plugin.dynamixelview.view.ObservationView$Provider"
+            icon="icons/view_observation.png"
             name="Dynamixel View"
-            viewid="zephyr.plugin.critterview.view.observation">
+            viewid="zephyr.plugin.dynamixelview.view.observation">
       </client>
    </extension>
 </plugin>

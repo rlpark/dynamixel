@@ -10,7 +10,7 @@ import zephyr.plugin.core.api.synchronization.Clock;
 @Monitor
 public class DynamixelReader implements Runnable {
   @IgnoreMonitor
-  private static final byte[] motorIDs = new byte[] { 91 };
+  private static final byte[] motorIDs = new byte[] { 91, 92, 93, 94, 95, 96 };
   public DynamixelRobot robot = new DynamixelRobot("/dev/ttyUSB0", motorIDs);
   private final Clock clock = new Clock("robot");
   private final int[] pos = new int[motorIDs.length];
@@ -27,6 +27,7 @@ public class DynamixelReader implements Runnable {
         pos[i] = (int) ((Math.sin(((clock.timeStep() + i * 100) % 360) / 180.0 * Math.PI)) * 200 + 512);
       }
       robot.sendAction(new DynamixelAction(pos));
+      // robot.sendAction(new DynamixelCompliantAction(true));
     }
     robot.close();
   }

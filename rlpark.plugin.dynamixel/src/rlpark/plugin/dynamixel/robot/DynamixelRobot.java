@@ -37,7 +37,37 @@ public class DynamixelRobot extends RobotEnvironment implements MonitorContainer
     byte[] message = null;
     if (a instanceof DynamixelAction)
       message = buildMessage((DynamixelAction) a);
+    if (a instanceof DynamixelCompliantAction)
+      message = buildCompliantMessage((DynamixelCompliantAction) a);
     connection.sendMessage(message);
+  }
+
+  private byte[] buildCompliantMessage(DynamixelCompliantAction a) {
+    byte length = (byte) (4 + connection.motorIDs().length * 2);
+
+    byte[] header = new byte[] { (byte) 0xff, (byte) 0xff, DynamixelConstant.DXL_BROADCAST, length,
+        DynamixelConstant.DXL_SYNC_WRITE, DynamixelConstant.DXL_TORQUE_ENABLE, 1 };
+
+    byte checksum = (byte) (DynamixelConstant.DXL_BROADCAST + length + DynamixelConstant.DXL_SYNC_WRITE
+        + DynamixelConstant.DXL_TORQUE_ENABLE + 1);
+
+    LiteByteBuffer motorData = new LiteByteBuffer(2 * connection.motorIDs().length, ByteOrder.LITTLE_ENDIAN);
+    byte enable = (byte) ((a.enable == false) ? 1 : 0);
+    for (int i = 0; i < connection.motorIDs().length; i++) {
+      motorData.put(connection.motorIDs()[i]);
+      motorData.put(enable);
+    }
+
+    for (byte b : motorData.array())
+      checksum += b;
+
+    checksum = (byte) (255 - (checksum % 256));
+    LiteByteBuffer buffer = new LiteByteBuffer(header.length + motorData.capacity() + 1, ByteOrder.LITTLE_ENDIAN);
+    buffer.put(header);
+    buffer.put(motorData.array());
+    buffer.put(checksum);
+
+    return buffer.array();
   }
 
   private byte[] buildMessage(DynamixelAction a) {

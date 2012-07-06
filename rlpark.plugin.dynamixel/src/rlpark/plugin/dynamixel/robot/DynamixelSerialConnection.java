@@ -54,6 +54,13 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
                                                          SerialPort.PARITY_NONE, SerialPort.FLOWCONTROL_NONE));
     try {
       serial.addEventListener(this);
+      serial.notifyOnDataAvailable(true);
+      try {
+        serial.enableReceiveTimeout(10);
+      } catch (UnsupportedCommOperationException e) {
+        System.err.println("Receive timeout unsupported");
+        e.printStackTrace();
+      }
     } catch (TooManyListenersException e1) {
       e1.printStackTrace();
     }
@@ -124,15 +131,11 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
   }
 
   private byte[] requestMotorSensors(byte motorID) {
-    sendReadRequest(motorID, DynamixelConstant.DXL_PRESENT_POSITION_L, (byte) 6);
-    byte[] buffer = new byte[12];
-    try {
-      Thread.sleep(1);
-    } catch (InterruptedException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
-    receiveMessage(buffer);
+    byte[] buffer = new byte[14];
+    do {
+      flushSerialPort();
+      sendReadRequest(motorID, DynamixelConstant.DXL_PRESENT_POSITION_L, (byte) 8);
+    } while (!receiveMessage(buffer));
     return buffer;
   }
 
@@ -141,29 +144,33 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
     return false;
   }
 
-  private void receiveMessage(byte[] bytes) {
-    int nbAvailable = 0;
+  private boolean receiveMessage(byte[] bytes) {
     Chrono chrono = new Chrono();
+    int nbAvailable = 0;
     while (nbAvailable < bytes.length) {
       try {
         nbAvailable = input.available();
-        if (chrono.getCurrentChrono() > 2) {
+        if (chrono.getCurrentMillis() > 50) {
           byte[] buffer = flushSerialPort();
           System.out.print("timeout ");
           for (byte b : buffer)
             System.out.print(Integer.toHexString(b) + " ");
           System.out.println("");
-          return;
+          return false;
         }
       } catch (IOException e) {
         e.printStackTrace();
       }
     }
     try {
-      input.read(bytes);
+      if (input.read(bytes, 0, bytes.length) != bytes.length) {
+        flushSerialPort();
+        return false;
+      }
     } catch (IOException e) {
       e.printStackTrace();
     }
+    return true;
   }
 
   @Override
@@ -217,7 +224,6 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
       break;
 
     case SerialPortEvent.DATA_AVAILABLE:
-      System.out.println("Event received: dataAvailable");
       break;
 
     case SerialPortEvent.BI:
