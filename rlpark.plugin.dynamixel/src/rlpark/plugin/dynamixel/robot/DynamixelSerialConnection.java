@@ -1,80 +1,36 @@
 package rlpark.plugin.dynamixel.robot;
 
-import gnu.io.CommPortIdentifier;
-import gnu.io.PortInUseException;
-import gnu.io.SerialPort;
-import gnu.io.SerialPortEvent;
-import gnu.io.SerialPortEventListener;
-import gnu.io.UnsupportedCommOperationException;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteOrder;
-import java.util.TooManyListenersException;
-import java.util.concurrent.Semaphore;
 
 import rlpark.plugin.dynamixel.internal.DynamixelConstant;
 import rlpark.plugin.dynamixel.internal.DynamixelDescriptor;
 import rlpark.plugin.irobot.internal.descriptors.IRobotObservationReceiver;
-import rlpark.plugin.irobot.internal.serial.SerialPortToRobot.SerialPortInfo;
-import rlpark.plugin.irobot.internal.serial.SerialPorts;
 import rlpark.plugin.rltoys.envio.observations.Legend;
 import rlpark.plugin.robot.internal.disco.datagroup.DropScalarGroup;
 import rlpark.plugin.robot.internal.disco.drops.Drop;
 import rlpark.plugin.robot.internal.sync.LiteByteBuffer;
 import rlpark.plugin.robot.internal.sync.Syncs;
 import rlpark.plugin.robot.observations.ObservationVersatile;
-import zephyr.plugin.core.api.synchronization.Chrono;
 
 @SuppressWarnings("restriction")
-public class DynamixelSerialConnection implements IRobotObservationReceiver, SerialPortEventListener {
-  private final String serialPortPath;
+public class DynamixelSerialConnection implements IRobotObservationReceiver {
   private final byte[] motorIDs;
-  private SerialPort serial;
+  private final DynamixelSerialPort serial;
   private final LiteByteBuffer motorSensorBuffer;
   private final Drop sensorDrop;
   private final DropScalarGroup sensors;
-  private InputStream input;
-  private OutputStream output;
-  private final Semaphore semaphore = new Semaphore(1, true);
 
-  DynamixelSerialConnection(String serialPortPath, byte[] motorIDs) {
-    this.serialPortPath = serialPortPath;
+
+  DynamixelSerialConnection(DynamixelSerialPort serial, byte[] motorIDs) {
+    this.serial = serial;
     this.motorIDs = motorIDs;
     sensorDrop = DynamixelDescriptor.newMotorReadDrop(motorIDs.length);
     sensors = new DropScalarGroup(sensorDrop);
     motorSensorBuffer = new LiteByteBuffer(sensorDrop.dataSize(), ByteOrder.LITTLE_ENDIAN);
-
   }
 
   @Override
   synchronized public void initialize() {
-    serial = openPort(serialPortPath, new SerialPortInfo(115200, SerialPort.DATABITS_8, SerialPort.STOPBITS_1,
-                                                         SerialPort.PARITY_NONE, SerialPort.FLOWCONTROL_NONE));
-    try {
-      serial.addEventListener(this);
-      serial.notifyOnDataAvailable(true);
-      try {
-        serial.enableReceiveTimeout(10);
-      } catch (UnsupportedCommOperationException e) {
-        System.err.println("Receive timeout unsupported");
-        e.printStackTrace();
-      }
-    } catch (TooManyListenersException e1) {
-      e1.printStackTrace();
-    }
-    try {
-      input = serial.getInputStream();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    try {
-      output = serial.getOutputStream();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    flushSerialPort();
   }
 
   @Override
@@ -82,11 +38,8 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
     return sensorDrop.packetSize();
   }
 
-
   @Override
   public ObservationVersatile waitForData() {
-    acquireSemaphore();
-
     motorSensorBuffer.clear();
     for (byte motorID : motorIDs) {
       byte[] motorData = requestMotorSensors(motorID);
@@ -94,48 +47,23 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
         motorSensorBuffer.put(motorData);
     }
 
-    releaseSemaphore();
     return Syncs.createObservation(System.currentTimeMillis(), motorSensorBuffer, sensors);
   }
 
-  private void releaseSemaphore() {
-    semaphore.release();
-  }
-
-  private void acquireSemaphore() {
-    try {
-      semaphore.acquire();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-  }
-
-  private void sendReadRequest(byte servoID, byte address, byte nbRegisters) {
-    byte length = 4; // instruction, address, size, checksum
-    byte checksum = (byte) (255 - ((servoID + length + DynamixelConstant.DXL_READ_DATA + address + nbRegisters) % 256));
-    byte[] data = new byte[] { (byte) 0xff, (byte) 0xff, servoID, length, DynamixelConstant.DXL_READ_DATA, address,
-        nbRegisters, checksum };
-    sendMessageInternal(data);
-  }
-
-  private byte[] flushSerialPort() {
-    byte[] buffer;
-    try {
-      buffer = new byte[input.available()];
-      input.read(buffer);
-    } catch (IOException e) {
-      e.printStackTrace();
-      buffer = new byte[0];
-    }
-    return buffer;
-  }
 
   private byte[] requestMotorSensors(byte motorID) {
     byte[] buffer = new byte[14];
-    do {
-      flushSerialPort();
-      sendReadRequest(motorID, DynamixelConstant.DXL_PRESENT_POSITION_L, (byte) 8);
-    } while (!receiveMessage(buffer));
+    while (!serial.sendAndReceive(DynamixelMessage.buildReadRequestMessage(motorID,
+                                                                           DynamixelConstant.DXL_PRESENT_POSITION_L,
+                                                                           (byte) 8), buffer)) {
+      try {
+        Thread.sleep(0, 100);
+      } catch (InterruptedException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    }
+
     return buffer;
   }
 
@@ -144,124 +72,18 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver, Ser
     return false;
   }
 
-  private boolean receiveMessage(byte[] bytes) {
-    Chrono chrono = new Chrono();
-    int nbAvailable = 0;
-    while (nbAvailable < bytes.length) {
-      try {
-        nbAvailable = input.available();
-        if (chrono.getCurrentMillis() > 50) {
-          byte[] buffer = flushSerialPort();
-          System.out.print("timeout ");
-          for (byte b : buffer)
-            System.out.print(Integer.toHexString(b) + " ");
-          System.out.println("");
-          return false;
-        }
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-    try {
-      if (input.read(bytes, 0, bytes.length) != bytes.length) {
-        flushSerialPort();
-        return false;
-      }
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    return true;
-  }
-
-  @Override
-  public void sendMessage(byte[] bytes) {
-    acquireSemaphore();
-    sendMessageInternal(bytes);
-    releaseSemaphore();
-  }
-
-  public void sendMessageInternal(byte[] bytes) {
-    try {
-      output.write(bytes);
-      output.flush();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-
   @Override
   public Legend legend() {
     return sensors.legend();
   }
 
-  static public SerialPort openPort(String serialPortFile, SerialPortInfo portInfo) {
-    SerialPorts.refreshPortIdentifiers();
-    CommPortIdentifier identifier = SerialPorts.getPortIdentifier(serialPortFile);
-    if (identifier == null)
-      throw new RuntimeException("Port identifier " + serialPortFile + " not found");
-    SerialPort serialPort;
-    try {
-      serialPort = (SerialPort) identifier.open("RLPark", 150);
-    } catch (PortInUseException e) {
-      e.printStackTrace();
-      return null;
-    }
-    try {
-      serialPort.setFlowControlMode(portInfo.flowControl);
-      serialPort.setSerialPortParams(portInfo.rate, portInfo.databits, portInfo.stopbits, portInfo.parity);
-    } catch (UnsupportedCommOperationException e) {
-      e.printStackTrace();
-      return null;
-    }
-    return serialPort;
-  }
-
-  @Override
-  public void serialEvent(SerialPortEvent event) {
-    switch (event.getEventType()) {
-    case SerialPortEvent.OUTPUT_BUFFER_EMPTY:
-      System.out.println("Event received: outputBufferEmpty");
-      break;
-
-    case SerialPortEvent.DATA_AVAILABLE:
-      break;
-
-    case SerialPortEvent.BI:
-      System.out.println("Event received: breakInterrupt");
-      break;
-
-    case SerialPortEvent.CD:
-      System.out.println("Event received: carrierDetect");
-      break;
-
-    case SerialPortEvent.CTS:
-      System.out.println("Event received: clearToSend");
-      break;
-
-    case SerialPortEvent.DSR:
-      System.out.println("Event received: dataSetReady");
-      break;
-
-    case SerialPortEvent.FE:
-      System.out.println("Event received: framingError");
-      break;
-
-    case SerialPortEvent.OE:
-      System.out.println("Event received: overrunError");
-      break;
-
-    case SerialPortEvent.PE:
-      System.out.println("Event received: parityError");
-      break;
-    case SerialPortEvent.RI:
-      System.out.println("Event received: ringIndicator");
-      break;
-    default:
-      System.out.println("Event received: unknown");
-    }
-  }
-
   public byte[] motorIDs() {
     return motorIDs;
   }
+
+  @Override
+  public void sendMessage(byte[] bytes) {
+    serial.sendMessage(bytes);
+  }
+
 }

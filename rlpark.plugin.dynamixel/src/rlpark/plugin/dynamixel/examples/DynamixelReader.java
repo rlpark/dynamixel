@@ -2,18 +2,17 @@ package rlpark.plugin.dynamixel.examples;
 
 import rlpark.plugin.dynamixel.robot.DynamixelAction;
 import rlpark.plugin.dynamixel.robot.DynamixelRobot;
+import rlpark.plugin.dynamixel.robot.DynamixelRobots;
+import rlpark.plugin.dynamixel.robot.DynamixelSerialPort;
 import zephyr.plugin.core.api.Zephyr;
-import zephyr.plugin.core.api.monitoring.annotations.IgnoreMonitor;
 import zephyr.plugin.core.api.monitoring.annotations.Monitor;
 import zephyr.plugin.core.api.synchronization.Clock;
 
 @Monitor
 public class DynamixelReader implements Runnable {
-  @IgnoreMonitor
-  private static final byte[] motorIDs = new byte[] { 91, 92, 93, 94, 95, 96 };
-  public DynamixelRobot robot = new DynamixelRobot("/dev/ttyUSB0", motorIDs);
+  DynamixelSerialPort serial = new DynamixelSerialPort("/dev/ttyUSB0");
+  public DynamixelRobot robot = new DynamixelRobot(serial, DynamixelRobots.scan(serial, 100));
   private final Clock clock = new Clock("robot");
-  private final int[] pos = new int[motorIDs.length];
 
   public DynamixelReader() {
     Zephyr.advertise(clock, this);
@@ -21,6 +20,10 @@ public class DynamixelReader implements Runnable {
 
   @Override
   public void run() {
+    int[] pos = new int[robot.nbMotors()];
+
+    // robot.sendAction(new DynamixelCompliantAction(true));
+
     while (clock.tick()) {
       robot.waitNewObs();
       for (int i = 0; i < robot.nbMotors(); i++) {
