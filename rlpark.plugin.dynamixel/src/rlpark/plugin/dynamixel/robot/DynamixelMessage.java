@@ -5,6 +5,7 @@ import java.nio.ByteOrder;
 import rlpark.plugin.dynamixel.internal.DynamixelConstant;
 import rlpark.plugin.robot.internal.sync.LiteByteBuffer;
 
+@SuppressWarnings("restriction")
 public class DynamixelMessage {
   DynamixelMessage() {
   }

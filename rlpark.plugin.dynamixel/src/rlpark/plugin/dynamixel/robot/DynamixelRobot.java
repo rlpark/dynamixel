@@ -8,8 +8,6 @@ import rlpark.plugin.robot.observations.ObservationReceiver;
 import zephyr.plugin.core.api.monitoring.abstracts.DataMonitor;
 import zephyr.plugin.core.api.monitoring.abstracts.MonitorContainer;
 
-
-@SuppressWarnings("restriction")
 public class DynamixelRobot extends RobotEnvironment implements MonitorContainer {
   private final DynamixelSerialConnection connection;
 

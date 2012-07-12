@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-@SuppressWarnings("restriction")
 public class DynamixelRobots {
 
   static private boolean ping(DynamixelSerialPort serial, byte motorID) {
