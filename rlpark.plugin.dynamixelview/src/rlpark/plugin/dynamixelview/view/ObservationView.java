@@ -35,9 +35,9 @@ public class ObservationView extends EnvironmentView<DynamixelRobot> implements
 	protected class IntegerTextClient extends TextClient {
 		private final int labelIndex;
 
-		public IntegerTextClient(String obsLabel, String textLabel) {
+		public IntegerTextClient(Legend legend, String obsLabel, String textLabel) {
 			super(textLabel);
-			labelIndex = legend().indexOf(obsLabel);
+			labelIndex = legend.indexOf(obsLabel);
 		}
 
 		@Override
@@ -56,19 +56,16 @@ public class ObservationView extends EnvironmentView<DynamixelRobot> implements
 		terminateAction.setEnabled(false);
 	}
 
-	public Legend legend() {
-		return instance.current().legend();
-	}
-
 	@Override
-	protected ObsLayout getObservationLayout() {
+	protected ObsLayout getObservationLayout(Clock clock, DynamixelRobot robot) {
+		Legend legend = robot.legend();
 		SensorGroup goalsGroup = new SensorGroup("Goals",
-				startsWith(DynamixelLabels.Goal), 0, 1023);
+				startsWith(legend, DynamixelLabels.Goal), 0, 1023);
 		SensorGroup speedGroup = new SensorGroup("Speed",
-				startsWith(DynamixelLabels.Speed), 0, 1023);
+				startsWith(legend, DynamixelLabels.Speed), 0, 1023);
 		SensorGroup loadGroup = new SensorGroup("Load",
-				startsWith(DynamixelLabels.Load), -511, 511);
-		SensorTextGroup infoGroup = createInfoGroup();
+				startsWith(legend, DynamixelLabels.Load), -511, 511);
+		SensorTextGroup infoGroup = createInfoGroup(clock, robot);
 		return new ObsLayout(new ObsWidget[][] { { infoGroup, goalsGroup },
 				{ speedGroup, loadGroup } });
 	}
@@ -78,22 +75,16 @@ public class ObservationView extends EnvironmentView<DynamixelRobot> implements
 		toolBarManager.add(terminateAction);
 	}
 
-	private SensorTextGroup createInfoGroup() {
+	private SensorTextGroup createInfoGroup(final Clock clock, final DynamixelRobot robot) {
 		TextClient busVoltageTextClient = new TextClient("Motors:") {
 			@Override
 			public String currentText() {
-				DynamixelRobot problem = instance.current();
-				if (problem == null)
-					return "";
-				return String.valueOf(problem.nbMotors());
+				return String.valueOf(robot.nbMotors());
 			}
 		};
 		TextClient loopTimeTextClient = new TextClient("Loop Time:") {
 			@Override
 			public String currentText() {
-				Clock clock = instance.clock();
-				if (clock == null)
-					return "00ms";
 				return Chrono.toPeriodString(clock.lastPeriodNano());
 			}
 		};
@@ -101,17 +92,16 @@ public class ObservationView extends EnvironmentView<DynamixelRobot> implements
 				loopTimeTextClient);
 	}
 
-	private int[] startsWith(String prefix) {
+	private int[] startsWith(Legend legend, String prefix) {
 		List<Integer> indexes = new ArrayList<Integer>();
-		for (Map.Entry<String, Integer> entry : legend().legend().entrySet())
+		for (Map.Entry<String, Integer> entry : legend.legend().entrySet())
 			if (entry.getKey().startsWith(prefix))
 				indexes.add(entry.getValue());
 		Collections.sort(indexes);
 		return Utils.asIntArray(indexes);
 	}
 
-	private void setViewTitle() {
-		DynamixelRobot problem = instance.current();
+	private void setViewTitle(DynamixelRobot problem) {
 		if (problem == null)
 			setViewName("Observation", "");
 		String viewTitle = problem.getClass().getSimpleName();
@@ -130,22 +120,17 @@ public class ObservationView extends EnvironmentView<DynamixelRobot> implements
 	}
 
 	@Override
-	protected void setLayout() {
-		super.setLayout();
+	protected void setLayout(Clock clock, DynamixelRobot robot) {
+		super.setLayout(clock, robot);
 		terminateAction.setEnabled(true);
-		setViewTitle();
+		setViewTitle(robot);
 	}
 
 	@Override
-	protected boolean synchronize() {
-		currentObservation = instance.current().lastReceivedObs();
+	protected boolean synchronize(DynamixelRobot robot) {
+		currentObservation = robot.lastReceivedObs();
 		synchronize(currentObservation);
 		return true;
-	}
-
-	@Override
-	public void close() {
-		instance.unset();
 	}
 
 	@Override
