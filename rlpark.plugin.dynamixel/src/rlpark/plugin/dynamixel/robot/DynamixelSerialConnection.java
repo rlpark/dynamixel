@@ -59,7 +59,6 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver {
       try {
         Thread.sleep(0, 100);
       } catch (InterruptedException e) {
-        // TODO Auto-generated catch block
         e.printStackTrace();
       }
     }
@@ -85,5 +84,4 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver {
   public void sendMessage(byte[] bytes) {
     serial.sendMessage(bytes);
   }
-
 }
