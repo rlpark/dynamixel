@@ -84,4 +84,8 @@ public class DynamixelSerialConnection implements IRobotObservationReceiver {
   public void sendMessage(byte[] bytes) {
     serial.sendMessage(bytes);
   }
+
+  @Override
+  public void close() {
+  }
 }

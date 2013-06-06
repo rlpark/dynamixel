@@ -25,7 +25,6 @@ public class DynamixelRobot extends RobotEnvironment implements MonitorContainer
     return connection.legend();
   }
 
-  @Override
   public void sendAction(Action a) {
     byte[] message = null;
     if (a instanceof DynamixelAction)
